@@ -19,6 +19,7 @@ import numpy as np
 from matplotlib.colors import BoundaryNorm
 from matplotlib.colors import ListedColormap
 from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import Normalize
 from pyshtools.expand import SHGLQ
 from pyshtools.expand import SHExpandGLQ
 from scipy.interpolate import griddata
@@ -506,8 +507,13 @@ def plot_flat_sample(
             title=f"{vname} pred err: {np.nanmean(np.abs(err_plot)):.{4}f} deg.",
         )
     else:
-        scatter_plot(fig, ax[1], lon=lon, lat=lat, data=truth, title=f"{vname} target")
-        scatter_plot(fig, ax[2], lon=lon, lat=lat, data=pred, title=f"{vname} pred")
+        # Concat data to define identical colorbar-limits
+        combined_data = np.concatenate((input_, truth, pred))
+        # For 'errors', only persistence and increments need identical colorbar-limits
+        combined_error = np.concatenate(((pred-input_), (truth-input_)))
+        norm = Normalize(vmin=combined_data.min(), vmax=combined_data.max())
+        scatter_plot(fig, ax[1], lon=lon, lat=lat, data=truth, norm=norm, title=f"{vname} target")
+        scatter_plot(fig, ax[2], lon=lon, lat=lat, data=pred, norm=norm, title=f"{vname} pred")
         scatter_plot(
             fig,
             ax[3],
@@ -545,7 +551,7 @@ def plot_flat_sample(
                 title=f"{vname} persist err: {np.nanmean(np.abs(err_plot)):.{4}f} deg.",
             )
         else:
-            scatter_plot(fig, ax[0], lon=lon, lat=lat, data=input_, title=f"{vname} input")
+            scatter_plot(fig, ax[0], lon=lon, lat=lat, data=input_, norm=norm, title=f"{vname} input")
             scatter_plot(
                 fig,
                 ax[4],
@@ -553,7 +559,11 @@ def plot_flat_sample(
                 lat=lat,
                 data=pred - input_,
                 cmap="bwr",
-                norm=TwoSlopeNorm(vcenter=0.0),
+                norm=TwoSlopeNorm(
+                    vmin=combined_error.min(),
+                    vcenter=0.0,
+                    vmax=combined_error.max()
+                ),
                 title=f"{vname} increment [pred - input]",
             )
             scatter_plot(
@@ -563,7 +573,11 @@ def plot_flat_sample(
                 lat=lat,
                 data=truth - input_,
                 cmap="bwr",
-                norm=TwoSlopeNorm(vcenter=0.0),
+                norm=TwoSlopeNorm(
+                    vmin=combined_error.min(),
+                    vcenter=0.0,
+                    vmax=combined_error.max()
+                ),
                 title=f"{vname} persist err",
             )
     else:
